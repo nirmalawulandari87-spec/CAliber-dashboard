@@ -1,0 +1,11 @@
+{
+  "name": "chandra-asri-executive-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Executive Dashboard Chandra Asri dengan asisten AI Laras",
+  "scripts": {
+    "dev": "npx --yes serve -l 3000 .",
+    "start": "npm run dev",
+    "dev:py": "python3 -m http.server 3000"
+  }
+}

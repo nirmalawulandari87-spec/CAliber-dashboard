@@ -1,0 +1,118 @@
+<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Executive Dashboard · Chandra Asri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&family=Raleway:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head><body>
+<div class="app">
+<aside class="side glass" id="side">
+ <div class="brand"><img class="mk" src="assets/logo.png" alt="Chandra Asri"><img class="full" src="assets/logo.png" alt="Chandra Asri"></div>
+ <nav class="nav" id="nav" aria-label="Main menu"></nav>
+</aside>
+<div class="main">
+ <header class="glass">
+  <div class="crumb"><a data-go="dash">Home</a><span aria-hidden="true">›</span><b id="cur">Executive Dashboard</b></div>
+  <div class="tools">
+   <select id="dateFilter" class="chip" style="background:var(--glass2);border:1px solid var(--line);font-weight:600;color:var(--ink);padding:6px 12px;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;">
+     <option value="live">Live (Past 6 Hours)</option>
+     <option value="day">Today</option>
+     <option value="week">This Week</option>
+     <option value="month">This Month</option>
+     <option value="year">This Year</option>
+   </select>
+   <button class="chip" id="btnDemo" style="color:var(--blue);font-weight:700;"><svg class="ic" viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><path d="M6 4l14 8-14 8z"/></svg> Live Demo</button>
+   <button class="chip" id="theme" aria-label="Toggle theme"><svg class="ic" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg></button>
+   <img class="logo" alt="Chandra Asri" src="assets/logo.png">
+  </div>
+ </header>
+
+ <!-- OVERVIEW -->
+ <div class="grid" id="grid">
+  <section class="panel glass">
+   <div class="ph"><div><h2>Plant Asset Overview</h2><div class="sub">Monitoring 5 Critical Machine Units</div></div></div>
+   <div class="kpi-summary" id="kpi-summary"></div>
+   <div id="machines-overview-grid"></div>
+  </section>
+  <section class="panel glass">
+   <div class="ph"><div><h2>AI Alerts & Insights</h2><div class="sub" id="asub"></div></div>
+    <div class="tools"><div class="seg" id="filt"><button data-f="all" class="on">All</button><button data-f="open">Active</button></div></div></div>
+   <div class="alerts" id="alerts"></div>
+   <div class="empty" id="empty">All alerts have been resolved. Great work!</div>
+  </section>
+ </div>
+
+ <!-- MACHINE DETAIL -->
+ <div class="grid machine-detail-grid" id="machine-grid" style="display:none;">
+  <section class="panel glass detail-left">
+   <div class="ph"><div><h2 id="m-name">Machine</h2><div class="sub" id="m-sub">Details</div></div>
+   <button class="chip" onclick="go('dash')"><svg class="ic" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg> Back</button></div>
+
+   <div class="detail-status-bar" id="m-status-bar"></div>
+   <h3 class="section-title">Sensor Parameters</h3>
+   <div class="kpis" id="m-specs"></div>
+
+   <div class="detail-charts-row">
+    <div class="chart-container">
+     <h3>Primary Trend</h3>
+     <div class="chart-wrap"><canvas id="m-chart"></canvas></div>
+    </div>
+    <div class="chart-container">
+     <h3>Secondary Trend</h3>
+     <div class="chart-wrap"><canvas id="m-chart2"></canvas></div>
+    </div>
+   </div>
+
+   <h3 class="section-title">Operational Information</h3>
+   <div class="op-info" id="m-opinfo"></div>
+  </section>
+
+  <section class="panel glass detail-right">
+   <div class="ph"><div><h2>Machine Anomaly Log</h2><div class="sub">AI-Powered Root Cause Analysis</div></div></div>
+   <div class="alerts" id="m-alerts"></div>
+   <div class="m-ai-section" id="m-ai-section">
+    <h3 class="section-title">AI Diagnosis & Root Cause</h3>
+    <div id="m-ai-diagnosis"></div>
+    <h3 class="section-title" style="margin-top:20px;">AI Parameter Contribution</h3>
+    <div id="m-ai-shap" class="shap-chart"></div>
+    <h3 class="section-title" style="margin-top:20px;">Historical Case Match</h3>
+    <div id="m-ai-historical" class="historical-box"></div>
+    <h3 class="section-title" style="margin-top:20px;">Recommended Action Plan</h3>
+    <div class="action-plan">
+      <div class="ap-card"><h4>Corrective Action</h4><div id="m-ai-corr"></div></div>
+      <div class="ap-card"><h4>Preventive Action</h4><div id="m-ai-prev"></div></div>
+    </div>
+   </div>
+  </section>
+ </div>
+</div>
+
+<!-- AI CHAT -->
+<aside class="ai glass" id="ai" aria-label="AI Assistant AI Assistant"><div>
+ <div class="lhead"><span id="lavw"></span><div><h2 class="ai-name">AI Assistant AI</h2><small>Plant Operations Assistant</small></div>
+  <button class="x" id="aix" aria-label="Close AI Assistant"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+ <div class="msgs" id="msgs" aria-live="polite"></div>
+ <div class="sugg" id="sugg"></div>
+ <div class="lfoot"><div class="ctx"><i></i><span id="ctx"></span></div>
+  <div class="inp"><input id="q" placeholder="Ask AI Assistant anything about the plant…" aria-label="Message for AI"><button id="send" aria-label="Send"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+  <div class="hint">Powered by Gemini AI · Context-aware plant intelligence</div></div>
+</div></aside>
+</div>
+
+<button class="fab" id="fab"><span id="favw"></span>Ask AI Assistant</button>
+<div class="toast" id="toast"></div>
+
+<!-- API KEY MODAL -->
+<div class="api-modal" id="apiModal">
+ <div class="api-modal-box">
+  <h3>🔑 Connect Gemini AI</h3>
+  <p>Enter your Google Gemini API key to enable intelligent conversations with AI Assistant. Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--blue)">aistudio.google.com</a></p>
+  <input type="password" id="apiKeyInput" placeholder="Paste your Gemini API key here...">
+  <div class="api-modal-btns">
+   <button class="btn-secondary" id="apiSkip">Use Demo Mode</button>
+   <button class="btn-primary" id="apiSave">Connect</button>
+  </div>
+ </div>
+</div>
+
+<script src="js/app.js"></script><script src="js/laras.js"></script>
+</body></html>
