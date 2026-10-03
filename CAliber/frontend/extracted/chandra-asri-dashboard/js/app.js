@@ -497,3 +497,46 @@ $('#btnDemo').onclick = () => {
 
 
 
+
+
+
+
+// ==========================================
+// CALIBER 2.0 - REAL DATA INTEGRATION (API)
+// ==========================================
+const API_URL = "http://127.0.0.1:5000/api";
+
+async function fetchRealData() {
+  try {
+    const machines = ['PU-2101B','KO-3201','PM-4405B','HE-3301','BL-5702'];
+    let totalDT = 0, totalAvail = 0, totalIncidents = 0, loaded = 0;
+    
+    for(const m of machines) {
+      try {
+        const res = await fetch(API_URL + "/kpi/" + m);
+        if(res.ok) {
+          const data = await res.json();
+          const kpis = data.kpis;
+          totalDT += parseFloat(kpis["Total Downtime (hours)"]?.value || 0);
+          totalAvail += parseFloat(kpis["Availability (%)"]?.value || 100);
+          totalIncidents += parseInt(kpis["No. of Failures (period)"]?.value || 0);
+          loaded++;
+        }
+      } catch(e) {}
+    }
+    
+    if(loaded > 0) {
+      const avgOEE = (totalAvail / loaded).toFixed(1);
+      let target = document.getElementById('kpi-summary');
+      if(target) {
+        target.innerHTML = `<div class="kpi-item"><div class="kpi-label">Avg. Availability (OEE)</div><div class="kpi-val" style="color:var(--green)">${avgOEE}%</div></div><div class="kpi-item"><div class="kpi-label">Total Downtime</div><div class="kpi-val" style="color:var(--amber)">${totalDT.toFixed(1)} <small>hrs</small></div></div><div class="kpi-item"><div class="kpi-label">Total Failures (6 mo)</div><div class="kpi-val" style="color:var(--rose)">${totalIncidents}</div></div><div class="kpi-item"><div class="kpi-label">API Status</div><div class="kpi-val" style="color:var(--green)">Connected</div></div>`;
+      }
+    }
+  } catch(e) {
+    console.log("API offline, using static data");
+  }
+}
+
+
+setTimeout(fetchRealData, 1000);
+
