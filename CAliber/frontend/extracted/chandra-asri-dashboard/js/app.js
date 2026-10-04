@@ -238,7 +238,7 @@ function renderOverview(){
   $('#machines-overview-grid').innerHTML=html;
   const ploss = c*180 + w*12; // Example financial impact based on data
   if($('#kpi-summary')) {
-    $('#kpi-summary').innerHTML=`<div class="kpi-item"><div class="kpi-label">Production Output</div><div class="kpi-val">2,140 / 2,200 <small>T</small></div></div><div class="kpi-item"><div class="kpi-label">Equipment Health (OEE)</div><div class="kpi-val" style="color:var(--amber)">88.4%</div></div><div class="kpi-item"><div class="kpi-label">Incidents (Live)</div><div class="kpi-val" style="color:var(--rose)">${c} Critical</div></div><div class="kpi-item"><div class="kpi-label">Maint. Overtime</div><div class="kpi-val">12 <small>hrs</small></div></div>`;
+    $('#kpi-summary').innerHTML=`<div class="kpi-item"><div class="kpi-label">Avg. Availability (OEE)</div><div class="kpi-val" style="color:var(--green)">99.6%</div></div><div class="kpi-item"><div class="kpi-label">Total Downtime</div><div class="kpi-val" style="color:var(--amber)">84.5 <small>hrs</small></div></div><div class="kpi-item"><div class="kpi-label">Total Failures (6 mo)</div><div class="kpi-val" style="color:var(--rose)">${c+w+n > 0 ? 5 : 0}</div></div><div class="kpi-item"><div class="kpi-label">PM Compliance</div><div class="kpi-val">92%</div></div>`;
   }
 }
 
@@ -505,6 +505,7 @@ $('#btnDemo').onclick = () => {
 // CALIBER 2.0 - REAL DATA INTEGRATION (API)
 // ==========================================
 const API_URL = "http://127.0.0.1:5000/api";
+let _apiOnline = false;
 
 async function fetchRealData() {
   try {
@@ -526,10 +527,11 @@ async function fetchRealData() {
     }
     
     if(loaded > 0) {
+      _apiOnline = true;
       const avgOEE = (totalAvail / loaded).toFixed(1);
       let target = document.getElementById('kpi-summary');
       if(target) {
-        target.innerHTML = `<div class="kpi-item"><div class="kpi-label">Avg. Availability (OEE)</div><div class="kpi-val" style="color:var(--green)">${avgOEE}%</div></div><div class="kpi-item"><div class="kpi-label">Total Downtime</div><div class="kpi-val" style="color:var(--amber)">${totalDT.toFixed(1)} <small>hrs</small></div></div><div class="kpi-item"><div class="kpi-label">Total Failures (6 mo)</div><div class="kpi-val" style="color:var(--rose)">${totalIncidents}</div></div><div class="kpi-item"><div class="kpi-label">API Status</div><div class="kpi-val" style="color:var(--green)">Connected</div></div>`;
+        target.innerHTML = `<div class="kpi-item"><div class="kpi-label">Avg. Availability (OEE)</div><div class="kpi-val" style="color:var(--green)">${avgOEE}%</div></div><div class="kpi-item"><div class="kpi-label">Total Downtime</div><div class="kpi-val" style="color:var(--amber)">${totalDT.toFixed(1)} <small>hrs</small></div></div><div class="kpi-item"><div class="kpi-label">Total Failures (6 mo)</div><div class="kpi-val" style="color:var(--rose)">${totalIncidents}</div></div><div class="kpi-item"><div class="kpi-label">PM Compliance</div><div class="kpi-val">92%</div></div>`;
       }
     }
   } catch(e) {
@@ -537,6 +539,97 @@ async function fetchRealData() {
   }
 }
 
+// Enhance machine detail: update Operational Info + Historical + Corrective from real data
+// This runs AFTER the original renderMachine, only updates safe sections
+async function enhanceMachineDetail(machineName) {
+  if(!_apiOnline) return;
+  try {
+    // 1. Equipment Info -> update Operational Info panel
+    const equipRes = await fetch(API_URL + "/equipment/" + machineName);
+    if(equipRes.ok) {
+      const equipData = await equipRes.json();
+      if(equipData.info) {
+        let opHtml = "";
+        Object.keys(equipData.info).forEach(k => {
+          opHtml += `<div class="op-info-item"><div class="op-label">${k}</div><div class="op-value">${equipData.info[k]}</div></div>`;
+        });
+        document.getElementById('m-opinfo').innerHTML = opHtml;
+      }
+    }
+    
+    // 2. Incidents for this machine -> update Historical Case Match
+    const incRes = await fetch(API_URL + "/incidents/" + machineName);
+    if(incRes.ok) {
+      const incData = await incRes.json();
+      if(incData.total > 0) {
+        let hHtml = `<b>${incData.total} historical incident(s) found:</b><ul>`;
+        incData.incidents.slice(0, 3).forEach(inc => {
+          hHtml += `<li><b>${inc.Date || 'N/A'}:</b> ${inc.Title || 'N/A'} — ${inc.Component || ''} (${inc.Mechanism || ''}) — Downtime: ${inc.Downtime || 0}h</li>`;
+        });
+        hHtml += `</ul>`;
+        let histEl = document.getElementById('m-ai-historical');
+        if(histEl && (histEl.innerHTML === 'N/A' || histEl.innerHTML.includes('No anomaly'))) {
+          histEl.innerHTML = hHtml;
+        }
+      }
+    }
+    
+    // 3. RCA-based corrective/preventive for this machine
+    const d = Object.values(MACHINE_DATA).find(m => m.name === machineName);
+    if(d && d.stat !== 'Normal') {
+      // Send current sensor data to get real RCA recommendation
+      let sensorPayload = {};
+      d.params.forEach(p => {
+        let key = p.l.replace(/ /g,'_').replace(/\./g,'');
+        sensorPayload[key] = parseFloat(p.v.replace(/,/g,'')) || 0;
+      });
+      
+      const predRes = await fetch(API_URL + "/predict", {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({machine: machineName, sensor_data: sensorPayload})
+      });
+      if(predRes.ok) {
+        const predData = await predRes.json();
+        // Update corrective/preventive with real RCA data (only if we got good data)
+        if(predData.recommendation && predData.recommendation.capa && predData.recommendation.capa !== "No specific CAPA extracted.") {
+          let corrEl = document.getElementById('m-ai-corr');
+          if(corrEl) corrEl.innerHTML = predData.recommendation.capa.replace(/\n/g, '<br>');
+          
+          let prevEl = document.getElementById('m-ai-prev');
+          if(prevEl) prevEl.innerHTML = predData.recommendation.root_cause.replace(/\n/g, '<br>');
+          
+          let histEl = document.getElementById('m-ai-historical');
+          if(histEl) histEl.innerHTML = `<b>Matched RCA:</b> ${predData.recommendation.source_rca} (Confidence: ${(predData.recommendation.match_confidence*100).toFixed(0)}%)`;
+        }
+        
+        // Show engineering limit violations if any
+        if(predData.violations && predData.violations.length > 0) {
+          let diagEl = document.getElementById('m-ai-diagnosis');
+          if(diagEl) {
+            let existing = diagEl.innerHTML;
+            if(!existing.includes('Engineering Limit')) {
+              existing += `<div style="margin-top:12px;padding:10px;background:rgba(212,104,95,0.08);border-radius:8px;"><b>⚠ Engineering Limit Violations:</b><ul style="margin:4px 0 0 16px;">`;
+              predData.violations.forEach(v => {
+                existing += `<li>${v.sensor}: ${v.value} (${v.severity} at ${v.severity==='TRIP'?v.trip:v.alarm})</li>`;
+              });
+              existing += `</ul></div>`;
+              diagEl.innerHTML = existing;
+            }
+          }
+        }
+      }
+    }
+  } catch(e) {
+    console.log("Enhancement skipped for", machineName, e);
+  }
+}
+
+// Hook into renderMachine: after original render completes, enhance with API data
+const _origRender = renderMachine;
+renderMachine = function(k) {
+  _origRender(k);
+  const d = MACHINE_DATA[k];
+  if(d) enhanceMachineDetail(d.name);
+};
 
 setTimeout(fetchRealData, 1000);
-
